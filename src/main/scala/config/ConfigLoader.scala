@@ -12,12 +12,25 @@ import java.time.{LocalDate, ZoneOffset}
 
 object ConfigLoader {
 
-  implicit val timestampReader: ConfigReader[Long] = ConfigReader[String].map { s =>
+  given timestampReader: ConfigReader[Long] = ConfigReader[String].map { s =>
     LocalDate
       .parse(s)
       .atStartOfDay()
       .toEpochSecond(ZoneOffset.UTC)
   }
+
+  given ConfigReader[List[String]] = ConfigReader[String].map { str =>
+    if (str.trim.startsWith("[")) {
+      str.trim
+        .stripPrefix("[")
+        .stripSuffix("]")
+        .split(",")
+        .map(_.trim.stripPrefix("\"").stripSuffix("\""))
+        .toList
+    } else {
+      str.split(",").map(_.trim).toList
+    }
+  }.orElse(ConfigReader.derived[List[String]])
 
   given ConfigReader[NostrRelayConfig] = ConfigReader.derived
   given ConfigReader[BigQueryConfig]   = ConfigReader.derived
