@@ -1,0 +1,254 @@
+HIPPOCRATIC LICENSE 3.0 WITH CUSTOM ETHICAL MODULES
+
+Licensor: Stela Leon
+Software: Datalake Importer
+
+This license incorporates the Hippocratic License 3.0 with additional custom modules.
+
+Full Hippocratic License 3.0 text: https://firstdonoharm.dev/version/3/0/license.html
+
+---
+
+PREAMBLE
+
+The Hippocratic License is an Ethical Source license that specifically prohibits
+uses that violate the Universal Declaration of Human Rights. This implementation
+includes additional modules that restrict uses beyond the base license.
+
+---
+
+CORE LICENSE TERMS
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+---
+
+MANDATORY MODULES
+
+The following modules are REQUIRED and binding:
+
+MODULE: NON-COMMERCIAL USE ONLY
+
+The Software may not be used for commercial purposes. "Commercial purposes" means:
+- Any use primarily intended for or directed toward commercial advantage
+- Any use by for-profit entities in their business operations
+- Monetary compensation or financial gain
+- Integration into commercial products or services
+
+Permitted non-commercial uses include:
+- Personal projects and individual use
+- Academic and educational purposes
+- Non-profit organizations with 501(c)(3) or equivalent status
+- Open-source projects not generating revenue
+
+---
+
+MODULE: MILITARY AND DEFENSE PROHIBITION
+
+The Software may not be used for military, defense, or national security purposes,
+including but not limited to:
+- Armed forces of any nation-state
+- Defense contractors and military suppliers
+- Intelligence agencies and security services
+- Development of weapons, surveillance systems, or military technology
+- Military training or simulation systems
+- Any application supporting warfare, armed conflict, or military operations
+
+---
+
+MODULE: FOSSIL FUEL INDUSTRY PROHIBITION
+
+The Software may not be used by or for the fossil fuel industry, including:
+- Oil and gas exploration, extraction, production, or refining companies
+- Coal mining operations and coal-fired power generation
+- Organizations whose primary business involves fossil fuel activities
+- Infrastructure for fossil fuel transportation, storage, or distribution
+- Services directly supporting fossil fuel extraction or consumption
+
+Exceptions: Renewable energy companies and organizations transitioning away from
+fossil fuels may use the Software for non-fossil-fuel activities.
+
+---
+
+MODULE: DEMOCRATIC GOVERNANCE REQUIREMENT
+
+The Software may not be used by governments that fail to meet democratic governance
+standards as defined by internationally recognized metrics:
+
+A government is considered non-democratic if it:
+
+1. Scores below 6.0 on the Democracy Index published by The Economist Intelligence Unit
+   (https://www.eiu.com/n/campaigns/democracy-index/)
+
+2. Is classified as "Not Free" by Freedom House's Freedom in the World report
+   (https://freedomhouse.org/report/freedom-world)
+
+3. Is not recognized as an "Electoral Democracy" by Freedom House
+
+4. Fails to meet the following minimum criteria:
+   - Free and fair elections with universal suffrage
+   - Peaceful transfer of power
+   - Independent judiciary
+   - Freedom of expression and press
+   - Freedom of assembly and association
+   - Rule of law and accountability mechanisms
+
+Users representing government entities must verify their government's status using
+the above criteria before using this Software.
+
+---
+
+MODULE: GENOCIDE AND COLONIALISM PROHIBITION
+
+The Software may not be used by governments or entities that:
+
+1. Are subject to genocide-related findings or proceedings:
+   - Rulings or ongoing proceedings at the International Court of Justice (ICJ)
+     regarding violations of the Genocide Convention
+   - Determinations by the UN Human Rights Council of systematic human rights
+     violations rising to the level of genocide or crimes against humanity
+   - States designated under UN General Assembly resolutions as committing
+     genocide or ethnic cleansing
+
+2. Engage in ongoing colonization practices as defined by:
+   - Occupation of territory not recognized by the United Nations
+   - Settlements in occupied territories deemed illegal under international law
+   - Administrative control over territories against the will of their inhabitants
+   - Systematic displacement of indigenous or native populations
+   - Denial of self-determination to peoples under their control
+
+3. Are subject to EU sanctions or restrictive measures related to:
+   - Serious human rights violations
+   - Violations of international humanitarian law
+   - Actions undermining territorial integrity or sovereignty
+   - Destabilizing actions or policies
+
+Current examples (as of January 2025, subject to updates):
+- Israeli government entities (ICJ proceedings, occupation of Palestinian territories)
+- Russian government entities (Ukraine invasion, EU sanctions)
+- Myanmar military (Rohingya genocide findings)
+- Any entity on the EU Consolidated Sanctions List
+
+Reference sources:
+- ICJ rulings: https://www.icj-cij.org/
+- EU Sanctions Map: https://www.sanctionsmap.eu/
+- UN Security Council Resolutions: https://www.un.org/securitycouncil/
+- UN Human Rights Council: https://www.ohchr.org/en/hr-bodies/hrc/home
+
+---
+
+MODULE: UN SANCTIONS COMPLIANCE
+
+The Software may not be used by entities subject to:
+- UN Security Council sanctions
+- UN Human Rights Council designations for serious violations
+- International Criminal Court (ICC) arrest warrants or proceedings
+- EU restrictive measures and sanctions
+- Entities designated by international bodies for:
+  * War crimes
+  * Crimes against humanity
+  * Terrorism
+  * Human trafficking
+  * Systematic human rights abuses
+
+Users must verify compliance with:
+- UN Security Council Consolidated List: https://www.un.org/securitycouncil/content/un-sc-consolidated-list
+- EU Sanctions Map: https://www.sanctionsmap.eu/
+- ICC Situations: https://www.icc-cpi.int/
+
+---
+
+UNIVERSAL DECLARATION OF HUMAN RIGHTS
+
+In addition to the above modules, the Software may not be used to violate any
+article of the United Nations Universal Declaration of Human Rights:
+https://www.un.org/en/universal-declaration-human-rights/
+
+This includes but is not limited to uses that:
+- Violate dignity, equality, or human rights (Articles 1-2)
+- Involve slavery, torture, or cruel treatment (Articles 4-5)
+- Deny fair trial or legal rights (Articles 6-11)
+- Violate privacy or enable surveillance abuse (Article 12)
+- Restrict freedom of movement or assembly (Articles 13, 20)
+- Deny freedom of thought, conscience, or expression (Articles 18-19)
+- Undermine right to education, work, or social security (Articles 23-26)
+
+---
+
+VERIFICATION AND COMPLIANCE
+
+1. Users must perform due diligence to verify compliance with these restrictions
+2. Upon request, users must provide documentation demonstrating compliance
+3. The licensor reserves the right to audit compliance and revoke permission for
+   violations
+4. Users must monitor changes to sanctions lists and democracy indices and cease
+   use if they become non-compliant
+
+---
+
+UPDATES AND INTERPRETATION
+
+The lists of prohibited entities and democracy metrics shall be understood to
+update automatically as:
+- New UN resolutions are passed
+- ICJ rulings are issued
+- EU sanctions are modified
+- Democracy indices are updated annually
+- New international findings on genocide or colonialism are made
+
+Users are responsible for monitoring compliance with updated restrictions.
+
+---
+
+EXCEPTIONS AND ALTERNATIVE LICENSING
+
+For uses not permitted under this license, including:
+- Commercial applications
+- Government entities meeting democratic standards but needing clarity
+- Humanitarian uses in restricted regions
+
+Please contact: [stela.leon@proton.me]
+
+---
+
+NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+DEFINITIONS
+
+"Democratic government": A government scoring 6.0+ on Democracy Index AND
+classified as "Free" or "Partly Free" by Freedom House, with free elections,
+peaceful power transfer, independent judiciary, and protected civil liberties.
+
+"Genocide": Acts defined in the UN Convention on the Prevention and Punishment
+of the Crime of Genocide (1948).
+
+"Colonization practices": Occupation, settlements, or administrative control
+over territories not recognized by the UN, involving denial of self-determination.
+
+"Commercial use": Any use primarily for commercial advantage or monetary
+compensation, including by for-profit entities.
+
+"Fossil fuel industry": Organizations whose primary business involves extraction,
+processing, or distribution of oil, gas, or coal.
+
+---
+
+For questions or licensing inquiries, contact: [your-email@example.com]
+
+License version: Hippocratic License 3.0 + Custom Ethical Modules v1.0
+Last updated: January 2026
