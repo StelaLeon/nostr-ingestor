@@ -208,7 +208,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
 
   test("RelayOrchestrator respects max retry delay via exponential backoff sequence") {
     val initialDelay = 10.millis
-    val maxDelay = 50.millis
+    val maxDelay     = 50.millis
 
     def calculateNextDelay(currentDelay: FiniteDuration): FiniteDuration =
       (currentDelay * 2).min(maxDelay)
@@ -255,11 +255,11 @@ class RelayOrchestratorTest extends CatsEffectSuite {
         .drain
 
     } yield
-    // In a real test with a test logger, you'd verify:
-    // - "Error on relay" message after first failure
-    // - "Reconnecting" message with backoff info
-    // - "EOSE received" message when None is emitted
-    assert(true, "Logging test - check logs manually or use test logger")
+      // In a real test with a test logger, you'd verify:
+      // - "Error on relay" message after first failure
+      // - "Reconnecting" message with backoff info
+      // - "EOSE received" message when None is emitted
+      assert(true, "Logging test - check logs manually or use test logger")
   }
 
   test("[TBD]RelayOrchestrator handles concurrent subscription updates".ignore) {

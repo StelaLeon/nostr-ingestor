@@ -1,7 +1,13 @@
 package com.zoomin.earth.datalake.backends
 
 import cats.effect.IO
-import com.zoomin.earth.datalake.models.{BigQueryNostrAuthoredEvent, NostrDataEvent, NostrFilterAuthored, NostrFilterUnauthored, NostrSubscription}
+import com.zoomin.earth.datalake.models.{
+  BigQueryNostrAuthoredEvent,
+  NostrDataEvent,
+  NostrFilterAuthored,
+  NostrFilterUnauthored,
+  NostrSubscription
+}
 import com.zoomin.earth.datalake.nostr.NostrOps.*
 import com.zoomin.earth.datalake.datapipelines.DataPipeline
 import com.zoomin.earth.datalake.datapipelines.mocks.{DataPipelineTestFixture, MockWebSocketClient}
@@ -59,7 +65,9 @@ class DatapipelineTest extends CatsEffectSuite {
       mockedSink <- DataPipelineTestFixture.createTestSink[BigQueryNostrAuthoredEvent]()
       config     <- ConfigLoader.load[IO]
 
-      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterUnauthored](originalStartTime = config.relays.syncSince)
+      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterUnauthored](originalStartTime =
+        config.relays.syncSince
+      )
 
       pipeline = new DataPipeline[NostrFilterUnauthored, BigQueryNostrAuthoredEvent, IO](
         mockedSink,
@@ -112,7 +120,9 @@ class DatapipelineTest extends CatsEffectSuite {
       mockedSink <- DataPipelineTestFixture.createTestSink[BigQueryNostrAuthoredEvent]()
       config     <- ConfigLoader.load[IO]
 
-      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterUnauthored](originalStartTime = config.relays.syncSince)
+      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterUnauthored](originalStartTime =
+        config.relays.syncSince
+      )
 
       pipeline = new DataPipeline[NostrFilterUnauthored, BigQueryNostrAuthoredEvent, IO](
         mockedSink,

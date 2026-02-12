@@ -60,7 +60,7 @@ class RelayOrchestrator[F[_]: Temporal: Logger, T <: NostrFilter, O](
       .flatMap { (res: StreamResult) =>
         res match {
           case Some(value) => Stream.emit(Some(value))
-          case None =>
+          case None        =>
             Stream
               .eval(Logger[F].info(s"EOSE received for ${currentSubscription.id}"))
               .flatMap(_ => Stream.empty.covaryAll[F, StreamResult])

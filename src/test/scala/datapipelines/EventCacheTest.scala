@@ -160,7 +160,7 @@ class EventCacheTest extends CatsEffectSuite {
     for {
       cache <- EventCache.make[IO, String, Int]
       _     <- cache.put("counter", 0)
-      _ <- List
+      _     <- List
         .range(0, 50)
         .parTraverse(_ =>
           cache.get("counter").flatMap {
@@ -170,8 +170,8 @@ class EventCacheTest extends CatsEffectSuite {
         )
       result <- cache.get("counter")
     } yield
-    // Due to race conditions, final value might be less than 50
-    assert(result.exists(_ > 0), s"Expected positive value, got $result")
+      // Due to race conditions, final value might be less than 50
+      assert(result.exists(_ > 0), s"Expected positive value, got $result")
   }
 
   test("put after clear should work") {
