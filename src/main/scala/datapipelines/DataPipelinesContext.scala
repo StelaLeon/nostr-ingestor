@@ -39,11 +39,11 @@ object DataPipelinesContext {
   ): Resource[IO, DataPipeline[NostrFilterAuthored, BigQueryNostrAuthoredEvent, IO]] =
     for {
 
-      backend <- AsyncHttpClientFs2Backend.resourceUsingConfig[IO](customClientConfig)
+      backend  <- AsyncHttpClientFs2Backend.resourceUsingConfig[IO](customClientConfig)
       bigQuery <- Resource.eval(
         IO(BigQueryOptions.newBuilder().setProjectId(config.bigQuery.projectId).build().getService)
       )
-      bqClient = new BigQueryClient(bigQuery, config.bigQuery)
+      bqClient                   = new BigQueryClient(bigQuery, config.bigQuery)
       subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterAuthored](originalStartTime =
         config.relays.syncSince
       )
@@ -60,11 +60,11 @@ object DataPipelinesContext {
   ): Resource[IO, DataPipeline[NostrFilterUnauthored, BigQueryNostrAuthoredEvent, IO]] =
     for {
 
-      backend <- AsyncHttpClientFs2Backend.resourceUsingConfig[IO](customClientConfig)
+      backend  <- AsyncHttpClientFs2Backend.resourceUsingConfig[IO](customClientConfig)
       bigQuery <- Resource.eval(
         IO(BigQueryOptions.newBuilder().setProjectId(config.bigQuery.projectId).build().getService)
       )
-      bqClient = new BigQueryClient(bigQuery, config.bigQuery)
+      bqClient                   = new BigQueryClient(bigQuery, config.bigQuery)
       subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterUnauthored](originalStartTime =
         config.relays.syncSince
       )

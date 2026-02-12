@@ -19,18 +19,20 @@ object ConfigLoader {
       .toEpochSecond(ZoneOffset.UTC)
   }
 
-  given ConfigReader[List[String]] = ConfigReader[String].map { str =>
-    if (str.trim.startsWith("[")) {
-      str.trim
-        .stripPrefix("[")
-        .stripSuffix("]")
-        .split(",")
-        .map(_.trim.stripPrefix("\"").stripSuffix("\""))
-        .toList
-    } else {
-      str.split(",").map(_.trim).toList
+  given ConfigReader[List[String]] = ConfigReader[String]
+    .map { str =>
+      if str.trim.startsWith("[") then {
+        str.trim
+          .stripPrefix("[")
+          .stripSuffix("]")
+          .split(",")
+          .map(_.trim.stripPrefix("\"").stripSuffix("\""))
+          .toList
+      } else {
+        str.split(",").map(_.trim).toList
+      }
     }
-  }.orElse(ConfigReader.derived[List[String]])
+    .orElse(ConfigReader.derived[List[String]])
 
   given ConfigReader[NostrRelayConfig] = ConfigReader.derived
   given ConfigReader[BigQueryConfig]   = ConfigReader.derived

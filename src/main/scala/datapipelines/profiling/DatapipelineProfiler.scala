@@ -26,7 +26,7 @@ trait DatapipelineProfiler {
           for {
             now      <- Temporal[F].realTime
             lastTime <- lastTimeRef.getAndSet(now.some)
-            _ <- lastTime match {
+            _        <- lastTime match {
               case Some(last) =>
                 Console[F].println(s"Time since last item: ${(now - last).toMillis}ms")
               case None =>
