@@ -31,7 +31,8 @@ class MockDataPipeline[T <: NostrFilter, O](
   backend: WebSocketClient[IO],
   f: (NostrDataEvent, String) => O,
   config: PipelineConfig,
-  updateStrategy: SubscriptionUpdateStrategy[T] = new TimeWindowUpdateStrategy[T](eventThreshold = 3, timeWindowSeconds = 3600L, originalStartTime = 1000L)
+  updateStrategy: SubscriptionUpdateStrategy[T] =
+    new TimeWindowUpdateStrategy[T](eventThreshold = 3, timeWindowSeconds = 3600L, originalStartTime = 1000L)
 )(using Concurrent[IO], Temporal[IO], Logger[IO], com.zoomin.earth.datalake.parser.Parser[T])
   extends DataPipeline[T, O, IO](testSink, backend, f, config, updateStrategy)
 

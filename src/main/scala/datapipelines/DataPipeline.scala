@@ -180,7 +180,7 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
                     onUpdate = (sub: NostrSubscription[T]) => subQ.offer(sub)
                   )
                   action match {
-                    case Skip() => loop(state)
+                    case Skip()          => loop(state)
                     case Process(newAcc) =>
                       cache.put(event.id, event.created_at) >>
                         queue.offer(f(event, relayUrl)) >>
