@@ -22,7 +22,7 @@ lazy val root = (project in file("."))
       "ch.qos.logback"                 % "logback-classic"               % "1.5.29",
       "com.github.pureconfig"         %% "pureconfig-core"               % "0.17.4",
       "com.github.pureconfig"         %% "pureconfig-cats-effect"        % "0.17.4",
-      "org.scalameta"                 %% "munit"                         % "1.2.1" % Test,
+      "org.scalameta"                 %% "munit"                         % "1.2.3" % Test,
       "org.typelevel"                 %% "munit-cats-effect"             % "2.1.0" % Test,
       "org.typelevel"                 %% "cats-effect-testing-scalatest" % "1.7.0" % Test
     ),
