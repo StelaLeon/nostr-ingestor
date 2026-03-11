@@ -8,7 +8,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "nostr-bigquery-pipeline",
     libraryDependencies ++= Seq(
-      "org.typelevel"                 %% "cats-effect"                   % "3.5.7",
+      "org.typelevel"                 %% "cats-effect"                   % "3.7.0",
       "co.fs2"                        %% "fs2-core"                      % "3.9.4",
       "co.fs2"                        %% "fs2-io"                        % "3.9.4",
       "com.softwaremill.sttp.client3" %% "core"                          % "3.9.8",
