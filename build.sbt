@@ -23,8 +23,8 @@ lazy val root = (project in file("."))
       "com.github.pureconfig"         %% "pureconfig-core"               % "0.17.4",
       "com.github.pureconfig"         %% "pureconfig-cats-effect"        % "0.17.4",
       "org.scalameta"                 %% "munit"                         % "1.2.3" % Test,
+      "org.typelevel"                 %% "cats-effect-testing-scalatest" % "1.8.0" % Test,
       "org.typelevel"                 %% "munit-cats-effect"             % "2.2.0" % Test,
-      "org.typelevel"                 %% "cats-effect-testing-scalatest" % "1.7.0" % Test
     ),
     scalacOptions ++= Seq(
       "-deprecation",
