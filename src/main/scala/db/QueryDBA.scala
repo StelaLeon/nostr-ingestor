@@ -1,15 +1,16 @@
 package com.zoomin.earth.datalake.db
 
-import cats.effect.kernel.Concurrent
-import cats.effect.{IO, Temporal}
+import cats.effect.{IO, Resource}
 import com.google.cloud.bigquery.*
 import com.zoomin.earth.datalake.config.BigQueryConfig
-import com.zoomin.earth.datalake.db.BigQueryClient.eventSchema
-import com.zoomin.earth.datalake.models.BigQueryNostrAuthoredEvent
-import org.typelevel.log4cats.Logger
+import com.zoomin.earth.datalake.models.{
+  BigQueryNostrAuthoredEvent,
+  BigQueryNostrAuthoredEventDec,
+  BigQueryStalkingPubKey
+}
 
 import java.time.Instant
-import scala.jdk.CollectionConverters
+import scala.jdk.CollectionConverters.*
 
 case class InsertResult(insertedCount: Int, errors: List[String])
 
@@ -24,29 +25,25 @@ trait DBClient[T, F[_]] {
   def insertToBigQuery(events: List[T]): F[InsertResult]
 }
 
-object BigQueryClient {
+object BigQueryClient extends BigQueryTable[BigQueryNostrAuthoredEvent] {
 
-  val eventSchema = Schema.of(
-    Field.newBuilder("id", StandardSQLTypeName.STRING).setMode(Field.Mode.REQUIRED).build(),
-    Field.newBuilder("pubkey", StandardSQLTypeName.STRING).setMode(Field.Mode.REQUIRED).build(),
-    Field.newBuilder("created_at", StandardSQLTypeName.INT64).setMode(Field.Mode.REQUIRED).build(),
-    Field.newBuilder("kind", StandardSQLTypeName.INT64).setMode(Field.Mode.REQUIRED).build(),
-    Field.newBuilder("content", StandardSQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build(),
-    Field.newBuilder("sig", StandardSQLTypeName.STRING).setMode(Field.Mode.REQUIRED).build(),
-    Field.newBuilder("tags", StandardSQLTypeName.STRING).setMode(Field.Mode.REPEATED).build(),
-    Field.newBuilder("relay_url", StandardSQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build(),
-    Field.newBuilder("processed_at", StandardSQLTypeName.INT64).setMode(Field.Mode.REQUIRED).build(),
-    Field.newBuilder("event_raw", StandardSQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build()
-  )
+  override protected def tableId(config: BigQueryConfig): TableId =
+    TableId.of(config.datasetId, config.tableId)
+
+  def make(bigQuery: BigQuery, config: BigQueryConfig): Resource[IO, BigQueryClient] =
+    for _ <- Resource.eval(IO.println("before validating the schema") *> validateSchema(bigQuery, config))
+    yield new BigQueryClient(bigQuery, config)
 
 }
 
 class BigQueryClient(private val bigQuery: BigQuery, config: BigQueryConfig)
   extends DBClient[BigQueryNostrAuthoredEvent, IO] {
 
+  val eventSchema: Schema = BqSchema[BigQueryNostrAuthoredEventDec].schema
+
   import com.zoomin.earth.datalake.datapipelines.DataPipelinesContext.logger
 
-  def getOrCreateTable(): IO[Unit] = IO {
+  def getOrCreateTable(): IO[Unit] = IO.blocking {
     val datasetInfo = DatasetInfo.newBuilder(config.datasetId).build()
 
     try
@@ -56,23 +53,13 @@ class BigQueryClient(private val bigQuery: BigQuery, config: BigQueryConfig)
         logger.debug(s"Dataset ${config.datasetId} already exists or creation failed: ${e.getMessage}")
     }
 
-    val tableId                = TableId.of(config.datasetId, config.tableId)
-    val tablePubKeysDistinctId = TableId.of(config.datasetId, config.monitoredPubKeyTableId)
-
-    val schemapubKeys = Schema.of(
-      Field.newBuilder("pubkey", StandardSQLTypeName.STRING).setMode(Field.Mode.REQUIRED).build(),
-      Field.newBuilder("ingested_at", StandardSQLTypeName.INT64).setMode(Field.Mode.REQUIRED).build()
-    )
+    val tableId = BigQueryClient.tableId(config)
 
     val tableDefinition = StandardTableDefinition.of(eventSchema)
     val tableInfo       = TableInfo.newBuilder(tableId, tableDefinition).build()
 
-    val tableDefinitionPubKeys = StandardTableDefinition.of(schemapubKeys)
-    val tablePubKeyInfo        = TableInfo.newBuilder(tablePubKeysDistinctId, tableDefinitionPubKeys).build()
-
     try {
       bigQuery.create(tableInfo)
-      bigQuery.create(tablePubKeyInfo)
       logger.info(s"Created table: $config.datasetId.$tableId")
     } catch {
       case _: BigQueryException =>
@@ -81,29 +68,19 @@ class BigQueryClient(private val bigQuery: BigQuery, config: BigQueryConfig)
   }
 
   def insertToBigQuery(events: List[BigQueryNostrAuthoredEvent]): IO[InsertResult] =
-    if events.isEmpty then {
-      logger.debug("No events to insert, skipping BigQuery insertion")
-      IO.pure(InsertResult.EmptyNoErrors)
-    } else
-      IO {
+    if events.isEmpty then IO.pure(InsertResult.EmptyNoErrors)
+    else
+      IO.blocking {
         val tableId = TableId.of(config.datasetId, config.tableId)
         import scala.jdk.CollectionConverters.*
 
+        val row  = BqRow[BigQueryNostrAuthoredEvent]
         val rows = events.map { event =>
-          val rowData = Map(
-            "id"           -> event.id,
-            "pubkey"       -> event.pubkey,
-            "created_at"   -> event.created_at,
-            "kind"         -> event.kind,
-            "content"      -> event.content,
-            "sig"          -> event.sig,
-            "tags"         -> serializeTags(event.tags),
-            "relay_url"    -> event.relay_url,
-            "processed_at" -> Instant.now().getEpochSecond(),
-            "event_raw"    -> event.toString()
-          ).asJava
-
-          InsertAllRequest.RowToInsert.of(rowData)
+          val derived = row.toRow(event) ++ Map(
+            "processed_at" -> Instant.now().getEpochSecond,
+            "event_raw"    -> event.toString
+          )
+          InsertAllRequest.RowToInsert.of(derived.asJava)
         }.asJava
 
         val insertRequest = InsertAllRequest
@@ -111,23 +88,21 @@ class BigQueryClient(private val bigQuery: BigQuery, config: BigQueryConfig)
           .setRows(rows)
           .build()
 
-        val response = bigQuery.insertAll(insertRequest)
-        if response.hasErrors() then {
-          val errors = response.getInsertErrors().asScala.map(_.toString).toList
-          InsertResult.Errored(errors)
-        } else {
-          logger.info(
-            s"Successfully inserted ${events.size} events with the following ids: ${events.map(ev => s"'${ev.id}'").mkString(",")}"
-          )
-          InsertResult.NoErrorsNotEmpty(events.size)
-        }
+        bigQuery.insertAll(insertRequest) // actual blocking network call
+      }.flatMap { response =>
+        if response.hasErrors then
+          val errors = response.getInsertErrors.asScala.map(_.toString).toList
+          logger.error(s"Failed to insert: ${errors.mkString(",")}") >>
+            IO.pure(InsertResult.Errored(errors))
+        else
+          logger.info(s"Inserted ${events.size} events") >>
+            IO.pure(InsertResult.NoErrorsNotEmpty(events.size))
       }.handleErrorWith { err =>
-        logger.error(s"Failed to insert to BigQuery: $err")
-        IO.pure(InsertResult.Errored(List(err.getMessage)))
+        logger.error(s"Exception during insert: $err") >>
+          IO.pure(InsertResult.Errored(List(err.getMessage)))
       }
 
   private def serializeTags(tags: List[List[String]]): java.util.List[String] = {
-    import java.util.List as JList
     val buffer = new java.util.ArrayList[String]()
     tags.foreach(tag => buffer.add(tag.mkString(",")))
     buffer
