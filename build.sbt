@@ -1,3 +1,5 @@
+enablePlugins(BuildInfoPlugin)
+
 ThisBuild / version      := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.3.1"
 ThisBuild / organization := "com.zoomin"
@@ -59,3 +61,12 @@ lazy val root = (project in file("."))
       "-Xms1G"
     )
   )
+
+
+buildInfoKeys := Seq[BuildInfoKey](
+  "eventsSchema" -> IO.read(baseDirectory.value / "src/main/resources/schemas/bq_events_schema.json"),
+  "markedAccountsSchema" -> IO.read(baseDirectory.value / "src/main/resources/schemas/bq_marked_users.json")
+)
+
+buildInfoPackage := "com.zoomin.generated"
+buildInfoObject  := "Schemas"

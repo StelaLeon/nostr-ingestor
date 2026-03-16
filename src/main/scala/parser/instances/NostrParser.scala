@@ -11,7 +11,7 @@ given authoredParser: Parser[NostrFilterAuthored] with
   type In  = String
   type Out = Option[NostrEvent]
 
-  def parse[NostrFilterAuthored](message: String)(using logger: Logger[IO]): Option[NostrEvent] =
+  def parse[NostrFilterAuthored](message: In)(using logger: Logger[IO]): Out =
     io.circe.parser.parse(message) match
       case Left(value) =>
         logger.error(s"we failed parsing with the error: ${value.getMessage}")

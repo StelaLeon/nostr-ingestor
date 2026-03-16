@@ -1,0 +1,27 @@
+[
+  {
+    "name": "pubkey",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "from_ts",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "to_ts",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "relay_url",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "processed_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

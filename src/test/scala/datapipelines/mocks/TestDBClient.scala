@@ -1,31 +1,8 @@
 package com.zoomin.earth.datalake.datapipelines.mocks
 
 import cats.effect.kernel.Concurrent
-import com.zoomin.earth.datalake.db.{DBClient, InsertResult}
-import cats.effect.kernel.{Concurrent, Temporal}
 import cats.syntax.all.*
-import cats.syntax.applicative.*
-import cats.syntax.flatMap.*
-import cats.syntax.functor.*
-import com.zoomin.earth.datalake.db.DBClient
-import com.zoomin.earth.datalake.models.{
-  EOSE,
-  NostrDataEvent,
-  NostrEvent,
-  NostrFilter,
-  NostrFilterAuthored,
-  NostrFilterUnauthored,
-  NostrSubscription
-}
-import fs2.Stream
-import io.circe.Encoder
-import io.circe.generic.auto.*
-import io.circe.syntax.*
-import org.typelevel.log4cats.Logger
-import sttp.capabilities.WebSockets
-import sttp.capabilities.fs2.Fs2Streams
-import sttp.client3.testing.SttpBackendStub
-import sttp.client3.{Response, SttpBackend}
+import com.zoomin.earth.datalake.db.{DBClient, InsertResult}
 
 class TestDBClient[T, F[_]: Concurrent] extends DBClient[T, F] {
   import cats.effect.kernel.Ref
