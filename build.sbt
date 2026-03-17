@@ -11,8 +11,8 @@ lazy val root = (project in file("."))
     name := "nostr-bigquery-pipeline",
     libraryDependencies ++= Seq(
       "org.typelevel"                 %% "cats-effect"                   % "3.7.0",
-      "co.fs2"                        %% "fs2-core"                      % "3.9.4",
-      "co.fs2"                        %% "fs2-io"                        % "3.9.4",
+      "co.fs2"                        %% "fs2-core"                      % "3.13.0",
+      "co.fs2"                        %% "fs2-io"                        % "3.13.0",
       "com.softwaremill.sttp.client3" %% "core"                          % "3.9.8",
       "com.softwaremill.sttp.client3" %% "fs2"                           % "3.9.8",
       "com.softwaremill.sttp.client3" %% "async-http-client-backend-fs2" % "3.9.8",
