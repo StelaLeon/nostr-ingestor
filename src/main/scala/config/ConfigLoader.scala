@@ -5,7 +5,6 @@ import cats.syntax.all.*
 import pureconfig.*
 import pureconfig.generic.derivation.*
 import pureconfig.module.catseffect.*
-import pureconfig.generic.derivation.default.*
 import scala.concurrent.duration.FiniteDuration
 import pureconfig.module.catseffect.syntax.*
 import java.time.{LocalDate, ZoneOffset}
