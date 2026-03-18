@@ -20,7 +20,7 @@ lazy val root = (project in file("."))
       "io.circe"                      %% "circe-generic"                 % "0.14.15",
       "io.circe"                      %% "circe-parser"                  % "0.14.15",
       "com.google.cloud"               % "google-cloud-bigquery"         % "2.57.1",
-      "org.typelevel"                 %% "log4cats-slf4j"                % "2.7.1",
+      "org.typelevel"                 %% "log4cats-slf4j"                % "2.8.0",
       "ch.qos.logback"                 % "logback-classic"               % "1.5.32",
       "com.github.pureconfig"         %% "pureconfig-core"               % "0.17.10",
       "com.github.pureconfig"         %% "pureconfig-cats-effect"        % "0.17.10",
