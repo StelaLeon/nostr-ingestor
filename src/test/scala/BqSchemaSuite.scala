@@ -47,9 +47,9 @@ class BqSchemaSuite extends FunSuite {
   test("BigQueryNostrAuthoredEvent tags field is REPEATED STRING") {
     val fields = BqSchema[BigQueryNostrAuthoredEvent].schema.getFields
     val tags   = fields.get(4)
-    assertEquals(tags.getName,                       "tags")
-    assertEquals(tags.getType.getStandardType,       StandardSQLTypeName.STRING)
-    assertEquals(tags.getMode,                       Field.Mode.REPEATED)
+    assertEquals(tags.getName, "tags")
+    assertEquals(tags.getType.getStandardType, StandardSQLTypeName.STRING)
+    assertEquals(tags.getMode, Field.Mode.REPEATED)
   }
 
   test("BigQueryNostrAuthoredEvent all required fields are REQUIRED") {
