@@ -1,7 +1,7 @@
 package com.zoomin.earth.datalake.datapipelines.mocks
 
 import cats.syntax.all.*
-import com.zoomin.earth.datalake.models.{NostrDataEvent, NostrEvent, NostrFilter, NostrFilterUnauthored}
+import com.zoomin.earth.datalake.models.{NostrDataEvent, NostrEvent, NostrFilter}
 import io.circe.*
 import io.circe.generic.auto.*
 import io.circe.parser.*
@@ -28,7 +28,7 @@ object NostrProtocol {
         if arr.headOption.exists(_.asString.contains("REQ")) then {
           for {
             subId <- arr.lift(1).flatMap(_.asString)
-            filters = arr.drop(2).flatMap(_.as[NostrFilterUnauthored].toOption).toList
+            filters = arr.drop(2).flatMap(_.as[NostrFilter].toOption).toList
           } yield (subId, filters)
         } else None
       }

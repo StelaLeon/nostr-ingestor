@@ -5,7 +5,7 @@ import cats.effect.std.Queue
 import munit.CatsEffectSuite
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import com.zoomin.earth.datalake.models.{NostrDataEvent, NostrFilterAuthored, NostrSubscription}
+import com.zoomin.earth.datalake.models.{NostrDataEvent, NostrFilter, NostrSubscription}
 import com.zoomin.earth.datalake.datapipelines.orchestration.{SubscriptionUpdateStrategy, TimeWindowUpdateStrategy}
 import com.zoomin.earth.datalake.datapipelines.processing.{
   EventProcessor,
@@ -30,28 +30,28 @@ class EventProcessorTest extends CatsEffectSuite {
     )
 
   // Dummy handler for tests
-  val dummyHandler: NostrSubscription[NostrFilterAuthored] => IO[Unit] =
+  val dummyHandler: NostrSubscription[NostrFilter] => IO[Unit] =
     _ => IO.unit
 
   test("EventProcessor accumulates events when strategy returns None") {
     val event1 = createEvent("event1", 1000L)
     val event2 = createEvent("event2", 2000L)
 
-    val subscription = NostrSubscription[NostrFilterAuthored](
+    val subscription = NostrSubscription[NostrFilter](
       id = "test-sub",
       filters = List(
-        NostrFilterAuthored(authors = Some(List("author1")))
+        NostrFilter(authors = Some(List("author1")))
       )
     )
 
-    val neverUpdateStrategy = new SubscriptionUpdateStrategy[NostrFilterAuthored] {
+    val neverUpdateStrategy = new SubscriptionUpdateStrategy[NostrFilter] {
       override def shouldUpdate(
         events: List[NostrDataEvent],
-        subscription: NostrSubscription[NostrFilterAuthored]
-      ): Option[NostrSubscription[NostrFilterAuthored]] = None
+        subscription: NostrSubscription[NostrFilter]
+      ): Option[NostrSubscription[NostrFilter]] = None
     }
 
-    val action1 = EventProcessor.processEvent[IO, NostrFilterAuthored](
+    val action1 = EventProcessor.processEvent[IO, NostrFilter](
       event1,
       List.empty,
       subscription,
@@ -64,7 +64,7 @@ class EventProcessorTest extends CatsEffectSuite {
       case _            => fail("Expected Process action")
     }
 
-    val action2 = EventProcessor.processEvent[IO, NostrFilterAuthored](
+    val action2 = EventProcessor.processEvent[IO, NostrFilter](
       event2,
       List(event1),
       subscription,
@@ -83,18 +83,18 @@ class EventProcessorTest extends CatsEffectSuite {
     val event2 = createEvent("event2", 2000L)
     val event3 = createEvent("event3", 3000L)
 
-    val subscription = NostrSubscription[NostrFilterAuthored](
+    val subscription = NostrSubscription[NostrFilter](
       id = "test-sub",
       filters = List(
-        NostrFilterAuthored(authors = Some(List("author1")), since = Some(1000L))
+        NostrFilter(authors = Some(List("author1")), since = Some(1000L))
       )
     )
 
-    val triggerAfter3Strategy = new SubscriptionUpdateStrategy[NostrFilterAuthored] {
+    val triggerAfter3Strategy = new SubscriptionUpdateStrategy[NostrFilter] {
       override def shouldUpdate(
         events: List[NostrDataEvent],
-        subscription: NostrSubscription[NostrFilterAuthored]
-      ): Option[NostrSubscription[NostrFilterAuthored]] =
+        subscription: NostrSubscription[NostrFilter]
+      ): Option[NostrSubscription[NostrFilter]] =
         if events.size >= 3 then {
           val maxTimestamp = events.map(_.created_at).max
           Some(
@@ -105,7 +105,7 @@ class EventProcessorTest extends CatsEffectSuite {
         } else None
     }
 
-    val action1 = EventProcessor.processEvent[IO, NostrFilterAuthored](
+    val action1 = EventProcessor.processEvent[IO, NostrFilter](
       event1,
       List.empty,
       subscription,
@@ -117,7 +117,7 @@ class EventProcessorTest extends CatsEffectSuite {
       case _          => fail("Expected Process for first event")
     }
 
-    val action2 = EventProcessor.processEvent[IO, NostrFilterAuthored](
+    val action2 = EventProcessor.processEvent[IO, NostrFilter](
       event2,
       List(event1),
       subscription,
@@ -129,7 +129,7 @@ class EventProcessorTest extends CatsEffectSuite {
       case _          => fail("Expected Process for second event")
     }
 
-    val action3 = EventProcessor.processEvent[IO, NostrFilterAuthored](
+    val action3 = EventProcessor.processEvent[IO, NostrFilter](
       event3,
       List(event1, event2),
       subscription,
@@ -150,20 +150,20 @@ class EventProcessorTest extends CatsEffectSuite {
     }
   }
 
-  test("TimeWindowUpdateStrategy updates subscription after time threshold") {
+  test("TimeWindowUpdateStrategy updates subscription on every non-empty batch") {
     val baseTime   = 1000L
-    val windowSize = 3600L // 1 hour in seconds
+    val windowSize = 3600L
 
-    val strategy = new TimeWindowUpdateStrategy[NostrFilterAuthored](
+    val strategy = new TimeWindowUpdateStrategy[NostrFilter](
       eventThreshold = 3,
       timeWindowSeconds = windowSize,
       originalStartTime = baseTime
     )
 
-    val subscription = NostrSubscription[NostrFilterAuthored](
+    val subscription = NostrSubscription[NostrFilter](
       id = "test-sub",
       filters = List(
-        NostrFilterAuthored(authors = Some(List("author1")), since = Some(baseTime))
+        NostrFilter(authors = Some(List("author1")), since = Some(baseTime))
       )
     )
 
@@ -171,17 +171,19 @@ class EventProcessorTest extends CatsEffectSuite {
     val event2 = createEvent("e2", baseTime + windowSize + 600)
 
     val result1 = strategy.shouldUpdate(List(event1, event2), subscription)
-    assertEquals(result1, None, "Should not update within time window")
+    assert(result1.isDefined, "Should update on any non-empty batch")
+    assert(
+      result1.get.filters.head.since.exists(_ > baseTime),
+      s"New 'since' should be greater than base time"
+    )
 
     val event3 = createEvent("e3", baseTime + windowSize + 700)
 
     val result2 = strategy.shouldUpdate(List(event1, event2, event3), subscription)
-    assert(result2.isDefined, "Should update after time window")
-
-    val newSince = result2.get.filters.head.since
+    assert(result2.isDefined, "Should update with three events")
     assert(
-      newSince.exists(_ > baseTime),
-      s"New 'since' should be greater than base time. Got: $newSince"
+      result2.get.filters.head.since.exists(_ > baseTime),
+      s"New 'since' should be greater than base time"
     )
   }
 

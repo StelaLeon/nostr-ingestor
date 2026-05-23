@@ -28,10 +28,10 @@ object SamplingPipeline extends IOApp {
       relays         = config.relays.urls
       subscriptionId = UUID.randomUUID().toString
 
-      subscription = NostrSubscription[NostrFilterUnauthored](
+      subscription = NostrSubscription[NostrFilter](
         id = subscriptionId,
         filters = List(
-          NostrFilterUnauthored(
+          NostrFilter(
             kinds = Some(Kind.ids),
             since = Some(config.relays.syncSince),
             until = Some(config.relays.syncUntil)

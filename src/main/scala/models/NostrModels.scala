@@ -1,9 +1,5 @@
 package com.zoomin.earth.datalake.models
 
-import cats.effect.std.UUIDGen
-
-import java.util.UUID
-
 trait NostrEvent
 
 case class NostrDataEvent(
@@ -24,43 +20,34 @@ case class NostrMessage(
   event: Option[NostrDataEvent]
 )
 
-case class NostrPipeline[T <: NostrFilter](relays: List[String], subscription: NostrSubscription[T])
+case class NostrPipeline[T <: NostrFilterBase](relays: List[String], subscription: NostrSubscription[T])
 
-case class NostrSubscription[T <: NostrFilter](
+case class NostrSubscription[T <: NostrFilterBase](
   id: String = s"main_${System.currentTimeMillis()}",
   filters: List[T]
 )
 
-object EOSESubscription extends NostrSubscription[NostrFilter](filters = List.empty)
+object EOSESubscription extends NostrSubscription[NostrFilterBase](filters = List.empty)
 
-sealed trait NostrFilter {
+sealed trait NostrFilterBase {
   val since: Option[Long]
   val until: Option[Long]
 
-  def withBounds(since: Long, until: Long): NostrFilter
+  def withBounds(since: Long, until: Long): NostrFilterBase
 }
 
-case class NostrFilterUnauthored(
+case class NostrFilter(
   kinds: Option[List[Int]] = None,
   authors: Option[List[String]] = None,
   override val since: Option[Long] = None,
   override val until: Option[Long] = None,
   limit: Option[Int] = None
-) extends NostrFilter {
-  def withBounds(s: Long, u: Long): NostrFilterUnauthored = this.copy(since = Some(s), until = Some(u))
+) extends NostrFilterBase {
+  def withBounds(s: Long, u: Long): NostrFilter = this.copy(since = Some(s), until = Some(u))
 }
 
-case class NostrFilterAuthored(
-  kinds: Option[List[Int]] = None,
-  authors: Option[List[String]] = None,
-  override val since: Option[Long] = None,
-  override val until: Option[Long] = None
-) extends NostrFilter {
-  def withBounds(s: Long, u: Long): NostrFilterAuthored = this.copy(since = Some(s), until = Some(u))
-}
-
-case object NoFilter extends NostrFilter {
-  val since: Option[Long]                       = None
-  val until: Option[Long]                       = None
-  def withBounds(s: Long, u: Long): NostrFilter = this
+case object NoFilter extends NostrFilterBase {
+  val since: Option[Long]                           = None
+  val until: Option[Long]                           = None
+  def withBounds(s: Long, u: Long): NostrFilterBase = this
 }

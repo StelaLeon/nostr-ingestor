@@ -6,19 +6,21 @@ import com.zoomin.earth.datalake.models.{
   EOSE,
   NostrDataEvent,
   NostrEvent,
-  NostrFilter,
+  NostrFilterBase,
   NostrSubscription
 }
 import io.circe.parser.parse
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
+import java.time.Instant
+
 trait NostrOps(using logger: Logger[IO]) {
   import NostrSerDesContext.given
   import io.circe.*
   import io.circe.syntax.*
 
-  extension [T <: NostrFilter](subscription: NostrSubscription[T])
+  extension [T <: NostrFilterBase](subscription: NostrSubscription[T])
 
     def toJson(using decoder: Encoder[T]) =
       Json
@@ -41,7 +43,8 @@ trait NostrOps(using logger: Logger[IO]) {
         tags = message.tags,
         content = message.content,
         sig = message.sig,
-        relay_url = relayUrl
+        relay_url = relayUrl,
+        processed_at = Instant.now().getEpochSecond
       )
     }
 

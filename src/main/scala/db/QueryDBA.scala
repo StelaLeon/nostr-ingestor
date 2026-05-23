@@ -3,11 +3,7 @@ package com.zoomin.earth.datalake.db
 import cats.effect.{IO, Resource}
 import com.google.cloud.bigquery.*
 import com.zoomin.earth.datalake.config.BigQueryConfig
-import com.zoomin.earth.datalake.models.{
-  BigQueryNostrAuthoredEvent,
-  BigQueryNostrAuthoredEventDec,
-  BigQueryStalkingPubKey
-}
+import com.zoomin.earth.datalake.models.{BigQueryNostrAuthoredEvent, BigQueryStalkingPubKey}
 
 import java.time.Instant
 import scala.jdk.CollectionConverters.*
@@ -39,7 +35,7 @@ object BigQueryClient extends BigQueryTable[BigQueryNostrAuthoredEvent] {
 class BigQueryClient(private val bigQuery: BigQuery, config: BigQueryConfig)
   extends DBClient[BigQueryNostrAuthoredEvent, IO] {
 
-  val eventSchema: Schema = BqSchema[BigQueryNostrAuthoredEventDec].schema
+  val eventSchema: Schema = BqSchema[BigQueryNostrAuthoredEvent].schema
 
   import com.zoomin.earth.datalake.datapipelines.DataPipelinesContext.logger
 
@@ -76,11 +72,7 @@ class BigQueryClient(private val bigQuery: BigQuery, config: BigQueryConfig)
 
         val row  = BqRow[BigQueryNostrAuthoredEvent]
         val rows = events.map { event =>
-          val derived = row.toRow(event) ++ Map(
-            "processed_at" -> Instant.now().getEpochSecond,
-            "event_raw"    -> event.toString
-          )
-          InsertAllRequest.RowToInsert.of(derived.asJava)
+          InsertAllRequest.RowToInsert.of(row.toRow(event).asJava)
         }.asJava
 
         val insertRequest = InsertAllRequest

@@ -26,7 +26,7 @@ import munit.Clue.generate
 import com.zoomin.earth.datalake.parser.instances.given
 import com.zoomin.earth.datalake.config.PipelineConfig
 
-class MockDataPipeline[T <: NostrFilter, O](
+class MockDataPipeline[T <: NostrFilterBase, O](
   testSink: DBClient[O, IO],
   backend: WebSocketClient[IO],
   f: (NostrDataEvent, String) => O,
@@ -96,8 +96,8 @@ object DataPipelineTestFixture {
     Concurrent[IO],
     Temporal[IO],
     Logger[IO]
-  ): MockDataPipeline[NostrFilterUnauthored, MockOutput] =
-    new MockDataPipeline[NostrFilterUnauthored, MockOutput](
+  ): MockDataPipeline[NostrFilter, MockOutput] =
+    new MockDataPipeline[NostrFilter, MockOutput](
       testSink,
       mockBackend,
       mockTransformFunction,
