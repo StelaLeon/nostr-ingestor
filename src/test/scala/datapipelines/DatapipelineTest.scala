@@ -1,13 +1,7 @@
 package com.zoomin.earth.datalake.backends
 
 import cats.effect.IO
-import com.zoomin.earth.datalake.models.{
-  BigQueryNostrAuthoredEvent,
-  NostrDataEvent,
-  NostrFilterAuthored,
-  NostrFilterUnauthored,
-  NostrSubscription
-}
+import com.zoomin.earth.datalake.models.{BigQueryNostrAuthoredEvent, NostrDataEvent, NostrFilter, NostrSubscription}
 import com.zoomin.earth.datalake.nostr.NostrOps.*
 import com.zoomin.earth.datalake.datapipelines.DataPipeline
 import com.zoomin.earth.datalake.datapipelines.mocks.{DataPipelineTestFixture, MockWebSocketClient}
@@ -53,10 +47,10 @@ class DatapipelineTest extends CatsEffectSuite {
       "wss://relay.nostr" -> events.map(_.asJson)
     )
 
-    val subscription = NostrSubscription[NostrFilterUnauthored](
+    val subscription = NostrSubscription[NostrFilter](
       id = "test-sub",
       filters = List(
-        NostrFilterUnauthored(authors = Some(List("nonexistent-author")))
+        NostrFilter(authors = Some(List("nonexistent-author")))
       )
     )
 
@@ -65,11 +59,9 @@ class DatapipelineTest extends CatsEffectSuite {
       mockedSink <- DataPipelineTestFixture.createTestSink[BigQueryNostrAuthoredEvent]()
       config     <- ConfigLoader.load[IO]
 
-      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterUnauthored](originalStartTime =
-        config.relays.syncSince
-      )
+      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilter](originalStartTime = config.relays.syncSince)
 
-      pipeline = new DataPipeline[NostrFilterUnauthored, BigQueryNostrAuthoredEvent, IO](
+      pipeline = new DataPipeline[NostrFilter, BigQueryNostrAuthoredEvent, IO](
         mockedSink,
         mockedWs,
         (ev: NostrDataEvent, r: String) => ev.toNostrAuthored(r),
@@ -108,10 +100,10 @@ class DatapipelineTest extends CatsEffectSuite {
       "wss://relay.nostr" -> events.map(_.asJson)
     )
 
-    val subscription = NostrSubscription[NostrFilterUnauthored](
+    val subscription = NostrSubscription[NostrFilter](
       id = "test-sub",
       filters = List(
-        NostrFilterUnauthored(authors = Some(List("author1")))
+        NostrFilter(authors = Some(List("author1")))
       )
     )
 
@@ -120,11 +112,9 @@ class DatapipelineTest extends CatsEffectSuite {
       mockedSink <- DataPipelineTestFixture.createTestSink[BigQueryNostrAuthoredEvent]()
       config     <- ConfigLoader.load[IO]
 
-      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterUnauthored](originalStartTime =
-        config.relays.syncSince
-      )
+      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilter](originalStartTime = config.relays.syncSince)
 
-      pipeline = new DataPipeline[NostrFilterUnauthored, BigQueryNostrAuthoredEvent, IO](
+      pipeline = new DataPipeline[NostrFilter, BigQueryNostrAuthoredEvent, IO](
         mockedSink,
         mockedWs,
         (ev: NostrDataEvent, r: String) => ev.toNostrAuthored(r),

@@ -54,11 +54,11 @@ lazy val root = (project in file("."))
       case x if x.endsWith(".proto")           => MergeStrategy.first
       case _                                   => MergeStrategy.first
     },
-    assembly / mainClass       := Some("com.zoomin.earth.datalake.StalkingPipeline"),
-    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
-    run / javaOptions ++= Seq(
+    assembly / mainClass       := Some("com.zoomin.earth.datalake.datapipelines.implementations.SamplingPipeline"),
+    assembly / assemblyJarName := "app.jar",
+      run / javaOptions ++= Seq(
       "-Xmx2G",
-      "-Xms1G"
+      "-Xms2G"
     )
   )
 
@@ -70,3 +70,4 @@ buildInfoKeys := Seq[BuildInfoKey](
 
 buildInfoPackage := "com.zoomin.generated"
 buildInfoObject  := "Schemas"
+addCommandAlias("gendoc", "runMain com.zoomin.earth.datalake.documentation.runDocGen")

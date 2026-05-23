@@ -2,20 +2,17 @@ FROM sbtscala/scala-sbt:eclipse-temurin-jammy-21.0.1_12_1.9.7_3.3.1 AS builder
 
 WORKDIR /app
 
-# Copy build files
 COPY build.sbt .
 COPY project ./project
 COPY src ./src
 
-# Build the assembly JAR
-RUN sbt clean assembly
+COPY target/scala-3.3.1/app.jar /app/app.jar
 
 # Runtime stage - use smaller JRE image
 FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
-
-COPY --from=builder /app/target/scala-*/*-assembly*.jar /app/app.jar
+COPY target/scala-3.3.1/app.jar /app/app.jar
 
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
@@ -45,4 +42,4 @@ ENV JAVA_OPTS="-Xmx2G -Xms1G"
 # EXPOSE 8080
 
 # Run the application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -cp /app/app.jar $0 $@"]

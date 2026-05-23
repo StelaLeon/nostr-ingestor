@@ -41,7 +41,7 @@ class BqSchemaSuite extends FunSuite {
 
   test("BigQueryNostrAuthoredEvent schema has correct number of fields") {
     val schema = BqSchema[BigQueryNostrAuthoredEvent].schema
-    assertEquals(schema.getFields.size, 8)
+    assertEquals(schema.getFields.size, 9)
   }
 
   test("BigQueryNostrAuthoredEvent tags field is REPEATED STRING") {

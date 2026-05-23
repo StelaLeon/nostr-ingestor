@@ -3,7 +3,7 @@ package com.zoomin.earth.datalake.datapipelines
 import cats.effect.{IO, Ref}
 import cats.effect.std.Queue
 import com.zoomin.earth.datalake.backends.websocket.{WebSocketClient, WebSocketOps}
-import com.zoomin.earth.datalake.models.{NostrFilterAuthored, NostrSubscription}
+import com.zoomin.earth.datalake.models.{NostrFilter, NostrSubscription}
 import fs2.Stream
 import munit.{CatsEffectSuite, Ignore}
 import org.typelevel.log4cats.Logger
@@ -23,14 +23,14 @@ class RelayOrchestratorTest extends CatsEffectSuite {
       IO.pure(Right(().asInstanceOf[A]))
   }
 
-  def createTestSubscription(id: String): NostrSubscription[NostrFilterAuthored] =
+  def createTestSubscription(id: String): NostrSubscription[NostrFilter] =
     NostrSubscription(
       id = id,
-      filters = List(NostrFilterAuthored(authors = Some(List("test-pubkey"))))
+      filters = List(NostrFilter(authors = Some(List("test-pubkey"))))
     )
 
   test("RelayOrchestrator creates resilient stream that processes events") {
-    val orchestrator = RelayOrchestrator[IO, NostrFilterAuthored, Unit](
+    val orchestrator = RelayOrchestrator[IO, NostrFilter, Unit](
       relayUrl = relayUrl,
       backend = mockBackend
     )
@@ -38,12 +38,12 @@ class RelayOrchestratorTest extends CatsEffectSuite {
     val initialSub = createTestSubscription("test-sub-1")
 
     for {
-      subQueue        <- Queue.unbounded[IO, NostrSubscription[NostrFilterAuthored]]
+      subQueue        <- Queue.unbounded[IO, NostrSubscription[NostrFilter]]
       eventsProcessed <- Ref.of[IO, Int](0)
 
       streamFactory = (
-        sub: NostrSubscription[NostrFilterAuthored],
-        _: Queue[IO, NostrSubscription[NostrFilterAuthored]]
+        sub: NostrSubscription[NostrFilter],
+        _: Queue[IO, NostrSubscription[NostrFilter]]
       ) =>
         Stream.eval(eventsProcessed.update(_ + 1)).as(Some(())) ++
           Stream.eval(eventsProcessed.update(_ + 1)).as(Some(())) ++
@@ -51,7 +51,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
           Stream.emit(None) // EOSE
 
       _ <- orchestrator
-        .createResilientStream(streamFactory, initialSub, subQueue)
+        .createResilientStream(streamFactory, initialSub, subQueue, IO.pure(None))
         .take(3)
         .compile
         .drain
@@ -61,7 +61,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
   }
 
   test("RelayOrchestrator stops stream when EOSE (None) is received") {
-    val orchestrator = RelayOrchestrator[IO, NostrFilterAuthored, Unit](
+    val orchestrator = RelayOrchestrator[IO, NostrFilter, Unit](
       relayUrl = relayUrl,
       backend = mockBackend
     )
@@ -69,15 +69,15 @@ class RelayOrchestratorTest extends CatsEffectSuite {
     val initialSub = createTestSubscription("test-sub-2")
 
     for {
-      subQueue <- Queue.unbounded[IO, NostrSubscription[NostrFilterAuthored]]
+      subQueue <- Queue.unbounded[IO, NostrSubscription[NostrFilter]]
 
       streamFactory = (
-        _: NostrSubscription[NostrFilterAuthored],
-        _: Queue[IO, NostrSubscription[NostrFilterAuthored]]
+        _: NostrSubscription[NostrFilter],
+        _: Queue[IO, NostrSubscription[NostrFilter]]
       ) => Stream(Some(()), Some(()), None)
 
       results <- orchestrator
-        .createResilientStream(streamFactory, initialSub, subQueue)
+        .createResilientStream(streamFactory, initialSub, subQueue, IO.pure(None))
         .take(10)
         .compile
         .toList
@@ -89,7 +89,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
   }
 
   test("RelayOrchestrator retries on error with exponential backoff") {
-    val orchestrator = RelayOrchestrator[IO, NostrFilterAuthored, Unit](
+    val orchestrator = RelayOrchestrator[IO, NostrFilter, Unit](
       relayUrl = relayUrl,
       backend = mockBackend,
       initialRetryDelay = 10.millis,
@@ -99,12 +99,12 @@ class RelayOrchestratorTest extends CatsEffectSuite {
     val initialSub = createTestSubscription("test-sub-3")
 
     for {
-      subQueue <- Queue.unbounded[IO, NostrSubscription[NostrFilterAuthored]]
+      subQueue <- Queue.unbounded[IO, NostrSubscription[NostrFilter]]
       attempts <- Ref.of[IO, Int](0)
 
       streamFactory = (
-        _: NostrSubscription[NostrFilterAuthored],
-        _: Queue[IO, NostrSubscription[NostrFilterAuthored]]
+        _: NostrSubscription[NostrFilter],
+        _: Queue[IO, NostrSubscription[NostrFilter]]
       ) =>
         Stream.eval(attempts.updateAndGet(_ + 1)).flatMap { count =>
           if count < 3 then Stream.raiseError[IO](new Exception(s"Connection failed (attempt $count)"))
@@ -112,7 +112,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
         }
 
       result <- orchestrator
-        .createResilientStream(streamFactory, initialSub, subQueue)
+        .createResilientStream(streamFactory, initialSub, subQueue, IO.pure(None))
         .take(1)
         .compile
         .toList
@@ -126,7 +126,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
   }
 
   test("RelayOrchestrator uses updated subscription when available during retry") {
-    val orchestrator = RelayOrchestrator[IO, NostrFilterAuthored, Unit](
+    val orchestrator = RelayOrchestrator[IO, NostrFilter, Unit](
       relayUrl = relayUrl,
       backend = mockBackend,
       initialRetryDelay = 10.millis
@@ -136,24 +136,25 @@ class RelayOrchestratorTest extends CatsEffectSuite {
     val updatedSub = createTestSubscription("updated-sub")
 
     for {
-      subQueue          <- Queue.unbounded[IO, NostrSubscription[NostrFilterAuthored]]
+      subQueue          <- Queue.unbounded[IO, NostrSubscription[NostrFilter]]
+      nextSubRef        <- Ref.of[IO, Option[NostrSubscription[NostrFilter]]](None)
       subscriptionsUsed <- Ref.of[IO, List[String]](List.empty)
 
       streamFactory = (
-        sub: NostrSubscription[NostrFilterAuthored],
-        _: Queue[IO, NostrSubscription[NostrFilterAuthored]]
+        sub: NostrSubscription[NostrFilter],
+        _: Queue[IO, NostrSubscription[NostrFilter]]
       ) =>
         Stream.eval(subscriptionsUsed.update(_ :+ sub.id)) >>
           Stream.raiseError[IO](new Exception("Fail to trigger retry"))
 
       fiber <- orchestrator
-        .createResilientStream(streamFactory, initialSub, subQueue)
+        .createResilientStream(streamFactory, initialSub, subQueue, nextSubRef.getAndSet(None))
         .compile
         .drain
         .start
 
       _ <- IO.sleep(50.millis)
-      _ <- subQueue.offer(updatedSub)
+      _ <- nextSubRef.set(Some(updatedSub))
       _ <- IO.sleep(100.millis)
       _ <- fiber.cancel
 
@@ -165,7 +166,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
   }
 
   test("RelayOrchestrator respects max retry delay") {
-    val orchestrator = RelayOrchestrator[IO, NostrFilterAuthored, Unit](
+    val orchestrator = RelayOrchestrator[IO, NostrFilter, Unit](
       relayUrl = relayUrl,
       backend = mockBackend,
       initialRetryDelay = 10.millis,
@@ -175,19 +176,19 @@ class RelayOrchestratorTest extends CatsEffectSuite {
     val initialSub = createTestSubscription("max-delay-sub")
 
     for {
-      subQueue        <- Queue.unbounded[IO, NostrSubscription[NostrFilterAuthored]]
+      subQueue        <- Queue.unbounded[IO, NostrSubscription[NostrFilter]]
       retryTimestamps <- Ref.of[IO, List[Long]](List.empty)
 
       // Always-failing stream that records retry times
       streamFactory = (
-        _: NostrSubscription[NostrFilterAuthored],
-        _: Queue[IO, NostrSubscription[NostrFilterAuthored]]
+        _: NostrSubscription[NostrFilter],
+        _: Queue[IO, NostrSubscription[NostrFilter]]
       ) =>
         Stream.eval(IO.realTime.flatMap(t => retryTimestamps.update(_ :+ t.toMillis))) >>
           Stream.raiseError[IO](new Exception("Always fail"))
 
       fiber <- orchestrator
-        .createResilientStream(streamFactory, initialSub, subQueue)
+        .createResilientStream(streamFactory, initialSub, subQueue, IO.pure(None))
         .compile
         .drain
         .start
@@ -227,7 +228,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
   }
 
   test("RelayOrchestrator logs appropriate messages during lifecycle") {
-    val orchestrator = RelayOrchestrator[IO, NostrFilterAuthored, Unit](
+    val orchestrator = RelayOrchestrator[IO, NostrFilter, Unit](
       relayUrl = relayUrl,
       backend = mockBackend,
       initialRetryDelay = 10.millis
@@ -236,12 +237,12 @@ class RelayOrchestratorTest extends CatsEffectSuite {
     val initialSub = createTestSubscription("logging-sub")
 
     for {
-      subQueue <- Queue.unbounded[IO, NostrSubscription[NostrFilterAuthored]]
+      subQueue <- Queue.unbounded[IO, NostrSubscription[NostrFilter]]
 
       attemptCount <- Ref.of[IO, Int](0)
       streamFactory = (
-        _: NostrSubscription[NostrFilterAuthored],
-        _: Queue[IO, NostrSubscription[NostrFilterAuthored]]
+        _: NostrSubscription[NostrFilter],
+        _: Queue[IO, NostrSubscription[NostrFilter]]
       ) =>
         Stream.eval(attemptCount.updateAndGet(_ + 1)).flatMap {
           case 1 => Stream.raiseError[IO](new Exception("First attempt fails"))
@@ -249,7 +250,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
         }
 
       _ <- orchestrator
-        .createResilientStream(streamFactory, initialSub, subQueue)
+        .createResilientStream(streamFactory, initialSub, subQueue, IO.pure(None))
         .take(1)
         .compile
         .drain
@@ -263,7 +264,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
   }
 
   test("[TBD]RelayOrchestrator handles concurrent subscription updates".ignore) {
-    val orchestrator = RelayOrchestrator[IO, NostrFilterAuthored, Unit](
+    val orchestrator = RelayOrchestrator[IO, NostrFilter, Unit](
       relayUrl = relayUrl,
       backend = mockBackend
     )
@@ -271,12 +272,12 @@ class RelayOrchestratorTest extends CatsEffectSuite {
     val initialSub = createTestSubscription("concurrent-sub")
 
     for {
-      subQueue      <- Queue.unbounded[IO, NostrSubscription[NostrFilterAuthored]]
+      subQueue      <- Queue.unbounded[IO, NostrSubscription[NostrFilter]]
       processedSubs <- Ref.of[IO, Set[String]](Set.empty)
 
       streamFactory = (
-        sub: NostrSubscription[NostrFilterAuthored],
-        _: Queue[IO, NostrSubscription[NostrFilterAuthored]]
+        sub: NostrSubscription[NostrFilter],
+        _: Queue[IO, NostrSubscription[NostrFilter]]
       ) =>
         Stream.eval(processedSubs.update(_ + sub.id)) >>
           Stream.eval(IO.sleep(50.millis)) >>
@@ -284,7 +285,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
           Stream.emit(None)
 
       fiber <- orchestrator
-        .createResilientStream(streamFactory, initialSub, subQueue)
+        .createResilientStream(streamFactory, initialSub, subQueue, IO.pure(None))
         .compile
         .drain
         .start
@@ -304,7 +305,7 @@ class RelayOrchestratorTest extends CatsEffectSuite {
   }
 
   test("[TBD]RelayOrchestrator reconnects after EOSE with new subscription".ignore) {
-    val orchestrator = RelayOrchestrator[IO, NostrFilterAuthored, Unit](
+    val orchestrator = RelayOrchestrator[IO, NostrFilter, Unit](
       relayUrl = relayUrl,
       backend = mockBackend
     )
@@ -313,19 +314,19 @@ class RelayOrchestratorTest extends CatsEffectSuite {
     val nextSub    = createTestSubscription("eose-sub-2")
 
     for {
-      subQueue          <- Queue.unbounded[IO, NostrSubscription[NostrFilterAuthored]]
+      subQueue          <- Queue.unbounded[IO, NostrSubscription[NostrFilter]]
       subscriptionsUsed <- Ref.of[IO, List[String]](List.empty)
 
       streamFactory = (
-        sub: NostrSubscription[NostrFilterAuthored],
-        _: Queue[IO, NostrSubscription[NostrFilterAuthored]]
+        sub: NostrSubscription[NostrFilter],
+        _: Queue[IO, NostrSubscription[NostrFilter]]
       ) =>
         Stream.eval(subscriptionsUsed.update(_ :+ sub.id)) >>
           Stream.emit(Some(())) ++
           Stream.emit(None)
 
       fiber <- orchestrator
-        .createResilientStream(streamFactory, initialSub, subQueue)
+        .createResilientStream(streamFactory, initialSub, subQueue, IO.pure(None))
         .compile
         .drain
         .start

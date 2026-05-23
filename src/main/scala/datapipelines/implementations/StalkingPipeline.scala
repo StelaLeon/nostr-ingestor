@@ -25,10 +25,10 @@ object StalkingPipeline extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val subscriptionId = UUID.randomUUID().toString
 
-    def getSubscription(authors: List[String], since: Long, until: Long) = NostrSubscription[NostrFilterAuthored](
+    def getSubscription(authors: List[String], since: Long, until: Long) = NostrSubscription[NostrFilter](
       id = subscriptionId,
       filters = List(
-        NostrFilterAuthored(
+        NostrFilter(
           kinds = Some(Kind.ids),
           authors = Some(authors),
           since = Some(since),

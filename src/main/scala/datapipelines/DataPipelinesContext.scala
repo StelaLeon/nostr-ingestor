@@ -5,12 +5,7 @@ import com.zoomin.earth.datalake.backends.websocket.WebSocketClient
 import com.zoomin.earth.datalake.config.PipelineConfig
 import com.zoomin.earth.datalake.datapipelines.orchestration.TimeWindowUpdateStrategy
 import com.zoomin.earth.datalake.db.BigQueryClient
-import com.zoomin.earth.datalake.models.{
-  BigQueryNostrAuthoredEvent,
-  NostrDataEvent,
-  NostrFilterAuthored,
-  NostrFilterUnauthored
-}
+import com.zoomin.earth.datalake.models.{BigQueryNostrAuthoredEvent, NostrDataEvent, NostrFilter}
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -32,7 +27,7 @@ object DataPipelinesContext {
 
   def authoredNostrPipeline(
     config: PipelineConfig
-  ): Resource[IO, DataPipeline[NostrFilterAuthored, BigQueryNostrAuthoredEvent, IO]] =
+  ): Resource[IO, DataPipeline[NostrFilter, BigQueryNostrAuthoredEvent, IO]] =
     for {
 
       backend  <- AsyncHttpClientFs2Backend.resourceUsingConfig[IO](customClientConfig)
@@ -40,10 +35,8 @@ object DataPipelinesContext {
         IO(BigQueryOptions.newBuilder().setProjectId(config.bigQuery.projectId).build().getService)
       )
       bqClient <- BigQueryClient.make(bigQuery, config.bigQuery)
-      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterAuthored](originalStartTime =
-        config.relays.syncSince
-      )
-    } yield new DataPipeline[NostrFilterAuthored, BigQueryNostrAuthoredEvent, IO](
+      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilter](originalStartTime = config.relays.syncSince)
+    } yield new DataPipeline[NostrFilter, BigQueryNostrAuthoredEvent, IO](
       bqClient,
       WebSocketClient(backend),
       (ev: NostrDataEvent, relayUrl: String) => ev.toNostrAuthored(relayUrl),
@@ -53,7 +46,7 @@ object DataPipelinesContext {
 
   def generalNostrPipeline(
     config: PipelineConfig
-  ): Resource[IO, DataPipeline[NostrFilterUnauthored, BigQueryNostrAuthoredEvent, IO]] =
+  ): Resource[IO, DataPipeline[NostrFilter, BigQueryNostrAuthoredEvent, IO]] =
     for {
 
       backend  <- AsyncHttpClientFs2Backend.resourceUsingConfig[IO](customClientConfig)
@@ -61,11 +54,9 @@ object DataPipelinesContext {
         IO(BigQueryOptions.newBuilder().setProjectId(config.bigQuery.projectId).build().getService)
       )
       bqClient                   = new BigQueryClient(bigQuery, config.bigQuery)
-      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilterUnauthored](originalStartTime =
-        config.relays.syncSince
-      )
+      subscriptionUpdateStrategy = TimeWindowUpdateStrategy[NostrFilter](originalStartTime = config.relays.syncSince)
 
-    } yield new DataPipeline[NostrFilterUnauthored, BigQueryNostrAuthoredEvent, IO](
+    } yield new DataPipeline[NostrFilter, BigQueryNostrAuthoredEvent, IO](
       bqClient,
       WebSocketClient(backend),
       (ev: NostrDataEvent, r: String) => ev.toNostrAuthored(r),

@@ -4,7 +4,7 @@ import com.zoomin.earth.datalake.backends.websocket.{WebSocketClient, WebSocketO
 import cats.Parallel
 import cats.effect.implicits.{monadCancelOps_, parallelForGenSpawn}
 import cats.effect.kernel.{Concurrent, Fiber, Ref, Sync}
-import cats.effect.std.Queue
+import cats.effect.std.{Console, Queue}
 import cats.effect.{Resource, Temporal}
 import cats.syntax.all.*
 import com.zoomin.earth.datalake.config.PipelineConfig
@@ -26,6 +26,7 @@ import com.zoomin.earth.datalake.datapipelines.processing.{
   Skip,
   UpdateSubscription
 }
+import com.zoomin.earth.datalake.datapipelines.profiling.DatapipelineProfiler
 import fs2.Stream
 import io.circe.*
 import org.typelevel.log4cats.Logger
@@ -33,7 +34,7 @@ import sttp.ws.WebSocketFrame
 
 import scala.concurrent.duration.*
 
-trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
+trait DataPipeline[T <: NostrFilterBase, O, F[_]: Concurrent](
   sinkBackend: DBClient[O, F],
   backend: WebSocketClient[F],
   f: (NostrDataEvent, String) => O,
@@ -60,15 +61,21 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
       _     <- Resource.eval(Logger[F].info(s"Creating pipeline for ${nostrRelays.size} relays"))
       _     <- Resource.eval(sinkBackend.getOrCreateTable())
       queue <- Resource.eval(Queue.unbounded[F, O])
-      subsQ <- Resource.eval(Queue.unbounded[F, NostrSubscription[T]])
       cache <- Resource.make(EventCache.make[F, String, Long])(cache => cache.clear)
 
     } yield {
       val nostrStreams: List[Stream[F, StreamResult]] =
-        nostrRelays.map(relay => createSource(subsQ, queue, subscription, relay, cache))
+        nostrRelays.map { relay =>
+          Stream.eval(Queue.unbounded[F, NostrSubscription[T]]).flatMap { subsQ =>
+            Stream.eval(Ref.of[F, Option[NostrSubscription[T]]](None)).flatMap { reconnectRef =>
+              createSource(subsQ, reconnectRef, queue, subscription, relay, cache)
+            }
+          }
+        }
 
       val bigQuerySink = Stream
         .fromQueueUnterminated(queue)
+        // .through(DatapipelineProfiler.interArrivalTimingPipe) // please remove to be able to ingest faster
         .groupWithin(config.bigQuery.batchSize, config.bigQuery.batchTimeout)
         .parEvalMap(maxConcurrent = 4)(events => sinkBackend.insertToBigQuery(events.toList).unlessA(events.isEmpty))
         .handleErrorWith(err => Stream.eval(Logger[F].error(s"BigQuery error: $err")) >> Stream.empty)
@@ -81,6 +88,7 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
 
   private def createSource(
     subsQ: Queue[F, NostrSubscription[T]],
+    reconnectRef: Ref[F, Option[NostrSubscription[T]]],
     queue: Queue[F, O],
     subscription: NostrSubscription[T],
     relayUrl: String,
@@ -96,12 +104,13 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
       sub: NostrSubscription[T],
       subQueue: Queue[F, NostrSubscription[T]]
     ): Stream[F, StreamResult] =
-      createWebSocketStream(queue, sub, relayUrl, subQueue, cache)
+      createWebSocketStream(queue, sub, relayUrl, subQueue, reconnectRef, cache)
 
     orchestrator.createResilientStream(
       streamFactory = createStreamForSubscription,
       initialSubscription = subscription,
-      subscriptionQueue = subsQ
+      subscriptionQueue = subsQ,
+      getNextSubscription = reconnectRef.getAndSet(None)
     )
   }
 
@@ -110,6 +119,7 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
     initialSubscription: NostrSubscription[T],
     relayUrl: String,
     subQ: Queue[F, NostrSubscription[T]],
+    reconnectRef: Ref[F, Option[NostrSubscription[T]]],
     cache: Cache[F, String, Long]
   )(using encoder: Encoder[T]): Stream[F, StreamResult] =
     Stream.eval(subQ.offer(initialSubscription)) >> Stream.eval {
@@ -125,7 +135,7 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
 
             result <- subscriptionReceiver(ws, currSub, subQ)
               .flatMap { fiber =>
-                receiveMessages(initialSubscription, ws, queue, subQ, relayUrl, cache)
+                receiveMessages(initialSubscription, ws, queue, subQ, reconnectRef, relayUrl, cache)
                   .guarantee(fiber.cancel)
               }
           } yield result
@@ -158,12 +168,13 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
     ws: WebSocketOps[F],
     queue: Queue[F, O],
     subQ: Queue[F, NostrSubscription[T]],
+    reconnectRef: Ref[F, Option[NostrSubscription[T]]],
     relayUrl: String,
     cache: Cache[F, String, Long]
   ): F[StreamResult] = {
 
     def loop(state: ProcessingState): F[StreamResult] =
-      ws.receive().flatMap {
+      Temporal[F].timeout(ws.receive(), 30.seconds).flatMap {
         case WebSocketFrame.Text(message, _, _) =>
           parseNostrMessage(message).flatMap {
             case Some(event: NostrDataEvent) =>
@@ -177,7 +188,7 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
                     state.accumulator,
                     subscription,
                     updateStrategy,
-                    onUpdate = (sub: NostrSubscription[T]) => subQ.offer(sub)
+                    onUpdate = (sub: NostrSubscription[T]) => subQ.offer(sub) >> reconnectRef.set(Some(sub))
                   )
                   action match {
                     case Skip()          => loop(state)
@@ -196,7 +207,7 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
               }
             case Some(_: EOSE) =>
               Logger[F].info("EOSE received") >>
-                loop(state)
+                Concurrent[F].pure(Some(()))
             case other =>
               Logger[F].info(s"Invalid message: $other") >>
                 loop(state)
@@ -214,7 +225,7 @@ trait DataPipeline[T <: NostrFilter, O, F[_]: Concurrent](
 
   private def parseNostrMessage(message: String): F[Option[NostrEvent]] =
     Concurrent[F].pure {
-      import com.zoomin.earth.datalake.parser.instances.authoredParser
+      import com.zoomin.earth.datalake.parser.instances.nostrParser
       NostrEventParser.parseWith(message)
     }
 

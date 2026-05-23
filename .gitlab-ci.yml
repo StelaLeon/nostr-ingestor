@@ -15,9 +15,11 @@ variables:
   SCALA_VERSION: "3.3.1"
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
-  # Docker image will be tagged with commit SHA and branch name
   IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
   IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+  GCP_REGISTRY_IMAGE: europe-west1-docker.pkg.dev/$GCP_PROJECT_ID/nostr-ingestion/nostr-ingestor
+  GCP_IMAGE_TAG: $GCP_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  GCP_IMAGE_MR: $GCP_REGISTRY_IMAGE:mr-$CI_MERGE_REQUEST_IID
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -95,7 +97,6 @@ docker:
     - docker push $IMAGE_TAG
     - docker push $IMAGE_LATEST
 
-# Docker build for merge requests (without push)
 docker:mr:
   stage: package
   image: docker:24-dind
@@ -103,10 +104,55 @@ docker:mr:
     - docker:24-dind
   dependencies:
     - build
+  before_script:
+    - docker login -u _json_key --password-stdin europe-west1-docker.pkg.dev < $GCP_SERVICE_ACCOUNT_KEY
   script:
-    - docker build -t $CI_REGISTRY_IMAGE:mr-$CI_MERGE_REQUEST_IID .
+    - |
+      cat > src/main/resources/application.conf <<EOF
+      nostr {
+        relays = [${NOSTR_RELAYS:-"\"wss://relay.damus.io\""}]
+
+        bigquery {
+          project-id = "\${?GOOGLE_CLOUD_PROJECT}"
+          dataset-id = "\${?BIGQUERY_DATASET}"
+          table-id = "\${?BIGQUERY_TABLE}"
+          batch-size = \${?BATCH_SIZE:-1000}
+          batch-timeout = \${?BATCH_TIMEOUT:-"30 seconds"}
+        }
+
+        pipeline {
+          parallelism = \${?PIPELINE_PARALLELISM:-4}
+          buffer-size = \${?BUFFER_SIZE:-100}
+        }
+      }
+      EOF
+    - docker build
+      --build-arg GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT
+      --build-arg BIGQUERY_DATASET=$BIGQUERY_DATASET
+      --build-arg BIGQUERY_TABLE=$BIGQUERY_TABLE
+      --build-arg BATCH_SIZE=$BATCH_SIZE
+      --build-arg BATCH_TIMEOUT=$BATCH_TIMEOUT
+      --build-arg BUFFER_SIZE=$BUFFER_SIZE
+      --build-arg PIPELINE_PARALLELISM=$PIPELINE_PARALLELISM
+      --build-arg LOG_LEVEL=$LOG_LEVEL
+      -t europe-west1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/nostr-ingestion/nostr-ingestor:mr-$CI_MERGE_REQUEST_IID .
+    - docker push europe-west1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/nostr-ingestion/nostr-ingestor:mr-$CI_MERGE_REQUEST_IID
   rules:
     - if: $CI_MERGE_REQUEST_IID
+
+pages:
+  stage: .post
+  image: sbtscala/scala-sbt:eclipse-temurin-jammy-21.0.1_12_1.9.7_3.3.1
+  script:
+    - sbt gendoc
+    - apt-get update -qq && apt-get install -y -qq pandoc
+    - mkdir -p public
+    - pandoc target/docs/schema.md -o public/index.html --standalone --metadata title="Nostr Ingestor Docs"
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
 
 scala-steward:
   image: 

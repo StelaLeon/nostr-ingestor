@@ -27,17 +27,13 @@ object NostrSerDesContext {
 
   given Encoder[EOSE] = deriveEncoder[EOSE]
 
-  given Decoder[NostrFilterUnauthored] = deriveDecoder[NostrFilterUnauthored]
+  given Decoder[NostrFilter] = deriveDecoder[NostrFilter]
 
-  given Encoder[NostrFilterUnauthored] = deriveEncoder[NostrFilterUnauthored].mapJson(_.dropNullValues)
+  given Encoder[NostrFilter] = deriveEncoder[NostrFilter].mapJson(_.dropNullValues)
 
-  given Decoder[NostrSubscription[NostrFilterUnauthored]] = deriveDecoder[NostrSubscription[NostrFilterUnauthored]]
+  given Decoder[NostrSubscription[NostrFilter]] = deriveDecoder[NostrSubscription[NostrFilter]]
 
-  given Encoder[NostrSubscription[NostrFilterUnauthored]] =
-    deriveEncoder[NostrSubscription[NostrFilterUnauthored]].mapJson(_.dropNullValues)
-
-  given Decoder[NostrFilterAuthored] = deriveDecoder[NostrFilterAuthored]
-
-  given Encoder[NostrFilterAuthored] = deriveEncoder[NostrFilterAuthored].mapJson(_.dropNullValues)
+  given Encoder[NostrSubscription[NostrFilter]] =
+    deriveEncoder[NostrSubscription[NostrFilter]].mapJson(_.dropNullValues)
 
 }
